@@ -17,6 +17,7 @@
             :columns="columns"
             :loading="loading"
             class="flex-1 bg-gray-900 border border-gray-700 rounded-lg"
+            @row-click="goToBlog"
         />
 
         <div class="flex justify-center gap-2 pt-4" v-if="totalPages > 1">
@@ -63,6 +64,9 @@
 
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import { navigateTo } from '#app'
+import { h } from 'vue'
+import { NuxtLink } from '#components'
 
 const config = useRuntimeConfig()
 
@@ -91,6 +95,12 @@ const totalPosts = ref(0)
 const totalPages = ref(1)
 const pageSize = 10
 
+const goToBlog = (row: Post) => {
+  if (row && row.id) {
+    navigateTo(`/blog/${row.id}`)
+  }
+}
+
 const goToPage = async (page: number) => {
   if (page < 1 || page > totalPages.value || page === currentPage.value) return
 
@@ -101,35 +111,63 @@ const goToPage = async (page: number) => {
 const getPosts = async (page: number = 1) => {
   loading.value = true
 
-  const response = await $fetch<ApiResponse>(`${config.public.apiBase}/blog/posts/paginated?page=${page}&per_page=${pageSize}`)
+  try {
+    const response = await $fetch<ApiResponse>(
+        `${config.public.apiBase}/blog/posts/paginated?page=${page}&per_page=${pageSize}`
+    )
 
-  posts.value = response.data
-  totalPosts.value = response.meta.total
-  totalPages.value = response.meta.last_page
-
-  loading.value = false
+    posts.value = response.data
+    totalPosts.value = response.meta.total
+    totalPages.value = response.meta.last_page
+  } catch (error) {
+    console.error('Помилка завантаження:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
   getPosts(1)
 })
 
-const columns: TableColumn<Post>[] = [
+const columns = [
   {
     accessorKey: 'id',
-    header: '#'
+    header: '#',
+    cell: ({ row }) =>
+        h('div', { class: 'flex items-center gap-3' }, [
+          h('span', row.original.id),
+          h(
+              NuxtLink,
+              {
+                to: `/blog/${row.original.id}`,
+                class: 'px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs',
+              },
+              () => '→'
+          ),
+        ]),
   },
   {
     accessorKey: 'title',
-    header: 'Заголовок'
+    header: 'Заголовок',
   },
   {
     accessorKey: 'user.name',
-    header: 'Автор'
+    header: 'Автор',
   },
   {
     accessorKey: 'category.title',
-    header: 'Категорія'
-  }
+    header: 'Категорія',
+  },
 ]
 </script>
+
+<style scoped>
+:deep(tbody tr) {
+  cursor: pointer;
+}
+
+:deep(tbody tr:hover) {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+</style>
