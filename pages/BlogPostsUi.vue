@@ -6,9 +6,13 @@
       </div>
 
       <div class="flex justify-between items-center">
-        <div class="text-gray-400 text-sm">
-          Всього постів: {{ totalPosts }}
-        </div>
+        <div class="text-gray-400 text-sm">Всього постів: {{ totalPosts }}</div>
+        <UButton
+            label="Створити пост"
+            icon="i-heroicons-plus"
+            color="primary"
+            @click="navigateTo('/blog/post-create')"
+        />
       </div>
 
       <div class="w-full space-y-4 pb-4">
@@ -17,8 +21,24 @@
             :columns="columns"
             :loading="loading"
             class="flex-1 bg-gray-900 border border-gray-700 rounded-lg"
-            @row-click="goToBlog"
-        />
+        >
+          <template #actions-cell="{ row }">
+            <UDropdownMenu
+                :items="getDropdownActions(row.original)"
+                placement="bottom-end"
+                class="inline-block"
+                @click.stop
+            >
+              <UButton
+                  icon="i-heroicons-ellipsis-vertical"
+                  color="neutral"
+                  variant="ghost"
+                  aria-label="Дії"
+                  @click.stop
+              />
+            </UDropdownMenu>
+          </template>
+        </UTable>
 
         <div class="flex justify-center gap-2 pt-4" v-if="totalPages > 1">
           <button
@@ -28,7 +48,6 @@
           >
             Перша
           </button>
-
           <button
               @click="goToPage(currentPage - 1)"
               :disabled="currentPage === 1"
@@ -36,11 +55,9 @@
           >
             Попередня
           </button>
-
           <span class="px-3 py-2 bg-gray-700 text-white rounded">
             {{ currentPage }} / {{ totalPages }}
           </span>
-
           <button
               @click="goToPage(currentPage + 1)"
               :disabled="currentPage === totalPages"
@@ -48,7 +65,6 @@
           >
             Наступна
           </button>
-
           <button
               @click="goToPage(totalPages)"
               :disabled="currentPage === totalPages"
@@ -63,10 +79,9 @@
 </template>
 
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
-import { navigateTo } from '#app'
+import type { TableColumn, DropdownMenuItem } from '@nuxt/ui'
 import { h } from 'vue'
-import { NuxtLink } from '#components'
+import { navigateTo } from '#app'
 
 const config = useRuntimeConfig()
 
@@ -95,27 +110,16 @@ const totalPosts = ref(0)
 const totalPages = ref(1)
 const pageSize = 10
 
-const goToBlog = (row: Post) => {
-  if (row && row.id) {
-    navigateTo(`/blog/${row.id}`)
-  }
-}
-
-const goToPage = async (page: number) => {
-  if (page < 1 || page > totalPages.value || page === currentPage.value) return
-
-  currentPage.value = page
-  await getPosts(page)
-}
+onMounted(() => {
+  getPosts(1)
+})
 
 const getPosts = async (page: number = 1) => {
   loading.value = true
-
   try {
     const response = await $fetch<ApiResponse>(
         `${config.public.apiBase}/blog/posts/paginated?page=${page}&per_page=${pageSize}`
     )
-
     posts.value = response.data
     totalPosts.value = response.meta.total
     totalPages.value = response.meta.last_page
@@ -126,39 +130,80 @@ const getPosts = async (page: number = 1) => {
   }
 }
 
-onMounted(() => {
-  getPosts(1)
-})
+const goToPage = async (page: number) => {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  await getPosts(page)
+}
 
-const columns = [
+const goToBlog = (post: Post) => {
+  navigateTo(`/blog/${post.id}`)
+}
+
+const deletePost = async (id: number) => {
+  if (!confirm(`Ви впевнені, що хочете видалити пост з ID ${id}?`)) return
+  try {
+    await $fetch(`${config.public.apiBase}/blog/posts/${id}`, {
+      method: 'DELETE'
+    })
+    await getPosts(currentPage.value)
+  } catch (error) {
+    alert('Не вдалося видалити пост')
+    console.error('Помилка видалення:', error)
+  }
+}
+
+function getDropdownActions(post: Post): DropdownMenuItem[][] {
+  return [
+    [
+      {
+        label: 'Редагувати',
+        icon: 'i-heroicons-pencil-square',
+        onSelect: () => navigateTo(`/blog/post-${post.id}-edit`)
+      },
+      {
+        label: 'Видалити',
+        icon: 'i-heroicons-trash',
+        color: 'error',
+        onSelect: () => deletePost(post.id)
+      }
+    ]
+  ]
+}
+
+const columns: TableColumn<Post>[] = [
   {
     accessorKey: 'id',
-    header: '#',
-    cell: ({ row }) =>
-        h('div', { class: 'flex items-center gap-3' }, [
-          h('span', row.original.id),
-          h(
-              NuxtLink,
-              {
-                to: `/blog/${row.original.id}`,
-                class: 'px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs',
-              },
-              () => '→'
-          ),
-        ]),
+    header: '#'
   },
   {
     accessorKey: 'title',
     header: 'Заголовок',
+    cell: ({ row }) =>
+        h(
+            'a',
+            {
+              class: 'text-blue-400 hover:underline cursor-pointer',
+              onClick: (e: MouseEvent) => {
+                e.stopPropagation()
+                goToBlog(row.original)
+              }
+            },
+            row.original.title
+        )
   },
   {
     accessorKey: 'user.name',
-    header: 'Автор',
+    header: 'Автор'
   },
   {
     accessorKey: 'category.title',
-    header: 'Категорія',
+    header: 'Категорія'
   },
+  {
+    id: 'actions',
+    header: 'Дії'
+  }
 ]
 </script>
 

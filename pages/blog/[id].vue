@@ -113,7 +113,7 @@
 
           <div class="bg-gray-900 rounded-lg p-4">
             <NuxtLink
-                :to="`/admin/blog/posts/${post.id}/edit`"
+                :to="`/blog/post-${post.id}-edit`"
                 class="text-white hover:text-gray-300 transition-colors cursor-pointer block text-center"
             >
               Редагувати
