@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import { h, resolveComponent } from 'vue'
+import { h, resolveComponent, computed } from 'vue'
 import { navigateTo } from '#app'
 
 interface Category {
@@ -83,12 +83,19 @@ const columns: TableColumn<Category>[] = [
         ),
   },
 ]
+
+const categoryCount = computed(() => categories.value?.data.length || 0)
 </script>
 
 <template>
   <div class="w-full px-8 max-w-7xl mx-auto py-12 font-sans bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-    <div class="flex justify-between items-center mb-10">
-      <h1 class="text-4xl font-semibold tracking-tight">Категорії</h1>
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-4xl font-semibold tracking-tight">Категорії</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Усього знайдено: {{ categoryCount }} {{ categoryCount === 1 ? 'категорія' : 'категорій' }}
+        </p>
+      </div>
       <NuxtLink
           to="/blog/categories-create"
           class="px-5 py-2 bg-[#00C58E] hover:bg-[#00a974] text-white rounded-md shadow transition"
@@ -106,6 +113,8 @@ const columns: TableColumn<Category>[] = [
         class="bg-gray-50 dark:bg-gray-800 rounded-md shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
     />
 
-    <p v-else class="text-gray-500 dark:text-gray-400 text-center py-12 text-lg">Категорії відсутні</p>
+    <p v-else class="text-gray-500 dark:text-gray-400 text-center py-12 text-lg">
+      Категорії відсутні
+    </p>
   </div>
 </template>
